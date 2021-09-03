@@ -4,6 +4,8 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from base64 import urlsafe_b64decode, urlsafe_b64encode
+
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
@@ -33,15 +35,27 @@ def main():
     service = build('gmail', 'v1', credentials=creds)
 
     # Call the Gmail API
-    results = service.users().labels().list(userId='me').execute()
-    labels = results.get('labels', [])
+    results = service.users().threads().list(userId='me',).execute()
+    email_thread = service.users().messages().get(userId='me',id='17b1718555f462cc',format='full').execute()
+    print (email_thread.keys())
+    print (email_thread['payload']['parts'])
+    
+    threads = results.get('threads', [])
+    def message_full_recursion(m):  
+        for i in m:
+            mimeType = (i['mimeType'])
+            print(mimeType)
+            
+            if (i['mimeType']) in ('text/plain','text/html'):
+                print('found')
+                data = i['body']['data']
+                text = urlsafe_b64decode(data).decode()
+                print (text)
+            elif 'parts' in i:
+                print('recursing')
+                message_full_recursion(i['parts'])
 
-    if not labels:
-        print('No labels found.')
-    else:
-        print('Labels:')
-        for label in labels:
-            print(label['name'])
+    message_full_recursion(email_thread['payload']['parts'])
 
 if __name__ == '__main__':
     main()
