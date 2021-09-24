@@ -8,6 +8,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from bs4 import BeautifulSoup
+from functions import *
 
 
 # If modifying these scopes, delete the file token.json.
@@ -41,24 +42,19 @@ def main():
     results = service.users().threads().list(userId='me',).execute()
     messages = service.users().messages().list(userId='me').execute()
     threadId = []
-    id_list = ['17c095fc8dba21aa','17c08e88cd7e50ec']
-    for id in id_list:
-        weird_message =  service.users().messages().get(userId='me',id=id,format='full').execute()
-        data_0 = weird_message['payload']['parts'][0]['body']['data']
-        clean_text = base64.b64decode(bytes(data_0.replace('-','+').replace('_','/'),'UTF-8'))
-        print (clean_text)
-        print ('*'*10)
+
+    id = '17c0ea35c36d6377'
+    email =  service.users().messages().get(userId='me',id=id,format='full').execute()
+    email_part = email['payload']
+    t = gethtml(findType(email_part))
+    print (t)
+     
+    def alternativeMIME(parts):
+        part = parts['parts'][-1]
+        data = part['body']['data']
+        clean_text = base64.urlsafe_b64decode(data).decode('UTF-8')
         soup = BeautifulSoup(clean_text,'lxml')
-        print (soup.prettify())
-        data_1 = weird_message['payload']['parts'][-1]['body']['data']
-        clean_text = base64.urlsafe_b64decode(data_1).decode('UTF-8')
-        print (type(clean_text))
-        print (clean_text)
-        print ('*'*10)
-        soup = BeautifulSoup(clean_text,'lxml')
-        print (soup.prettify())
-        print ('*'*10)
-        
+        print (soup.get_text())
 
     for message in messages['messages']:
         info = service.users().messages().get(userId='me',id=message['id'],format='full').execute()
@@ -76,16 +72,17 @@ def main():
                         #this has alternative versions of the same content
                         #the one we will try to parse is the html version, 
                         #always the last part [-1]
-                        if info['payload']['parts'][-1]['mimeType'] == 'text/html':
-                            data = info['payload']['parts'][-1]['body']['data']
-                        else:
-                            data = info['payload']['parts'][0]['body']['data']
 
-                        #decode from base64 to UTF-8
+                        alternativeMIME(info['payload'])
+
+                    elif mimeType == 'multipart/related':
+                        part = info['payload']['parts'][0]    
+                        alternativeMIME(part)
+                    elif mimeType == 'text/html':
+                        data = info['payload']['body']['data']
                         clean_text = base64.urlsafe_b64decode(data).decode('UTF-8')
                         soup = BeautifulSoup(clean_text,'lxml')
                         print (soup.get_text())
-
 
                     else:
                         print (f'not yet implemented how to parse {mimeType}')
